@@ -1,5 +1,7 @@
 # app/treasury/router.py
 
+from datetime import date
+from typing import Optional
 from fastapi import APIRouter
 from app.treasury.managers import (
     InvoiceManager
@@ -17,6 +19,14 @@ async def get_financial_kpis():
     pass
 
 # Invoice Routers
+
+@router.patch("/mark_invoice_paid/{invoice_id}", tags=["Extended Invoices"])
+async def mark_invoice_paid(invoice_id: int, payment_date: Optional[date] = None):
+    try:
+        manager = InvoiceManager(None)
+        return await manager.mark_invoice_paid(invoice_id, payment_date or date.today())
+    except Exception as e:
+        raise e
 
 @router.get("/invoices", tags=["Basic Invoices"])
 async def get_invoices():

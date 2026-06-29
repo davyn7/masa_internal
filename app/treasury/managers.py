@@ -3,13 +3,15 @@
 from app.treasury.schemas import (
     InvoiceBase
 )
+from datetime import date
 from app.treasury.db import (
     get_invoices_db,
     get_invoice_db,
     add_invoice_db,
     update_invoice_db,
     delete_invoice_db,
-    delete_invoices_db
+    delete_invoices_db,
+    mark_invoice_paid_db
 )
 
 class InvoiceManager:
@@ -33,3 +35,6 @@ class InvoiceManager:
 
     async def delete_invoices(self):
         return await delete_invoices_db()
+
+    async def mark_invoice_paid(self, invoice_id: int, payment_date: date):
+        return await mark_invoice_paid_db(invoice_id, payment_date)
