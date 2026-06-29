@@ -3,8 +3,7 @@
 from app.customers.schemas import (
     CustomerBase,
     ContractBase,
-    AggregateBase,
-    InvoiceBase
+    AggregateBase
 )
 from app.customers.db import (
     get_customers_db,
@@ -24,13 +23,7 @@ from app.customers.db import (
     add_aggregate_db,
     update_aggregate_db,
     delete_aggregate_db,
-    delete_aggregates_db,
-    get_invoices_db,
-    get_invoice_db,
-    add_invoice_db,
-    update_invoice_db,
-    delete_invoice_db,
-    delete_invoices_db
+    delete_aggregates_db
 )
 
 class CustomerManager:
@@ -98,25 +91,3 @@ class AggregateManager:
 
     async def delete_aggregates(self):
         return await delete_aggregates_db()
-
-class InvoiceManager:
-    def __init__(self, invoice: InvoiceBase):
-        self.invoice = invoice
-
-    async def get_invoices(self):
-        return await get_invoices_db()
-
-    async def get_invoice(self, invoice_id: int):
-        return await get_invoice_db(invoice_id)
-
-    async def add_invoice(self):
-        return await add_invoice_db(self.invoice)
-
-    async def update_invoice(self, invoice_id: int):
-        return await update_invoice_db(self.invoice, invoice_id)
-
-    async def delete_invoice(self, invoice_id: int):
-        return await delete_invoice_db(invoice_id)
-
-    async def delete_invoices(self):
-        return await delete_invoices_db()
