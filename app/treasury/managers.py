@@ -3,14 +3,18 @@
 from app.treasury.schemas import (
     InvoiceBase,
     RevenueBase,
-    ReceivableBase
+    ReceivableBase,
+    FXRateBase
 )
+import calendar
 from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 from app.customers.db import (
     get_contract_db,
-    get_latest_aggregate_by_customer_db
+    get_contract_by_customer_db,
+    get_latest_aggregate_by_customer_db,
+    get_aggregates_by_customer_db
 )
 from app.treasury.db import (
     get_invoices_db,
@@ -27,7 +31,14 @@ from app.treasury.db import (
     delete_revenue_by_invoice_db,
     delete_revenues_db,
     update_receivable_by_invoice_db,
-    update_revenue_by_invoice_db
+    update_revenue_by_invoice_db,
+    get_fxrates_db,
+    get_fxrate_db,
+    get_fxrate_for_date_db,
+    add_fxrate_db,
+    update_fxrate_db,
+    delete_fxrate_db,
+    delete_fxrates_db
 )
 
 # Maps INVOICES fields to their RECEIVABLES/REVENUES counterparts so shared
@@ -61,6 +72,20 @@ VEHICLE_TYPES = [
     "manhauler",
 ]
 VAT_RATE = Decimal("0.11")
+
+
+def _to_date(value):
+    if value is None or isinstance(value, date):
+        return value
+    return date.fromisoformat(value)
+
+
+def _add_months(d: date, months: int) -> date:
+    month_index = d.month - 1 + months
+    year = d.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
 
 class InvoiceManager:
     def __init__(self, invoice: InvoiceBase):
@@ -211,3 +236,103 @@ class InvoiceManager:
             total_idr=total_idr,
         )
         return await self.add_invoice()
+
+
+class KpiManager:
+    def _aggregate_amount(self, contract: dict, aggregate: dict) -> Decimal:
+        amount = Decimal("0")
+        for vehicle in VEHICLE_TYPES:
+            quantity = Decimal(str(aggregate.get(vehicle) or 0))
+            price = Decimal(str(contract.get(f"price_{vehicle}") or 0))
+            amount += quantity * price
+        return amount
+
+    async def get_mrr_by_customer(self, customer_id: int):
+        contract_result = await get_contract_by_customer_db(customer_id)
+        if not contract_result:
+            raise HTTPException(status_code=404, detail=f"No contract found for customer {customer_id}")
+        contract = contract_result[0]
+
+        start_date = _to_date(contract.get("start_date"))
+        end_date = _to_date(contract.get("end_date"))
+        if not start_date or not end_date:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Contract for customer {customer_id} is missing start_date or end_date",
+            )
+
+        aggregate_result = await get_aggregates_by_customer_db(customer_id)
+        if not aggregate_result:
+            raise HTTPException(status_code=404, detail=f"No aggregates found for customer {customer_id}")
+        aggregates = sorted(aggregate_result, key=lambda a: _to_date(a.get("updated_at")))
+
+        currency = contract.get("currency")
+        monthly = []
+        total_usd = Decimal("0")
+        total_idr = Decimal("0")
+
+        month = _add_months(start_date, 1)
+        while month <= end_date:
+            active = None
+            for aggregate in aggregates:
+                if _to_date(aggregate.get("updated_at")) <= month:
+                    active = aggregate
+                else:
+                    break
+
+            amount = self._aggregate_amount(contract, active) if active else Decimal("0")
+
+            rate_result = await get_fxrate_for_date_db(month)
+            rate = Decimal(str(rate_result[0]["rate"])) if rate_result and rate_result[0].get("rate") else None
+
+            amount_usd = None
+            amount_idr = None
+            if currency == "USD":
+                amount_usd = amount
+                if rate:
+                    amount_idr = amount * rate
+            elif currency == "IDR":
+                amount_idr = amount
+                if rate:
+                    amount_usd = amount / rate
+
+            monthly.append({
+                "month": month.isoformat(),
+                "currency": currency,
+                "amount_usd": amount_usd,
+                "amount_idr": amount_idr,
+            })
+            total_usd += amount_usd or Decimal("0")
+            total_idr += amount_idr or Decimal("0")
+            month = _add_months(month, 1)
+
+        return {
+            "customer_id": customer_id,
+            "currency": currency,
+            "monthly": monthly,
+            "total_usd": total_usd,
+            "total_idr": total_idr,
+        }
+
+
+class FXRateManager:
+    def __init__(self, fxrate: FXRateBase):
+        self.fxrate = fxrate
+
+    async def get_fxrates(self):
+        return await get_fxrates_db()
+
+    async def get_fxrate(self, fxrate_id: int):
+        return await get_fxrate_db(fxrate_id)
+
+    async def add_fxrate(self):
+        return await add_fxrate_db(self.fxrate)
+
+    async def update_fxrate(self, fxrate_id: int):
+        return await update_fxrate_db(self.fxrate, fxrate_id)
+
+    async def delete_fxrate(self, fxrate_id: int):
+        return await delete_fxrate_db(fxrate_id)
+
+    async def delete_fxrates(self):
+        return await delete_fxrates_db()

@@ -5,10 +5,13 @@ from typing import Optional
 from decimal import Decimal
 from fastapi import APIRouter
 from app.treasury.managers import (
-    InvoiceManager
+    InvoiceManager,
+    KpiManager,
+    FXRateManager
 )
 from app.treasury.schemas import (
-    InvoiceBase
+    InvoiceBase,
+    FXRateBase
 )
 
 router = APIRouter(prefix="/treasury")
@@ -21,7 +24,11 @@ async def get_financial_kpis():
 
 @router.get("/mrr_by_customer", tags=["Financial KPIs"])
 async def get_mrr_by_customer(customer_id: int):
-    pass
+    try:
+        manager = KpiManager()
+        return await manager.get_mrr_by_customer(customer_id)
+    except Exception as e:
+        raise e
 
 # Invoice Routers
 
@@ -86,5 +93,55 @@ async def delete_invoices():
     try:
         manager = InvoiceManager(None)
         return await manager.delete_invoices()
+    except Exception as e:
+        raise e
+
+# FX Rate Routers
+
+@router.get("/fxrates", tags=["Basic FX Rates"])
+async def get_fxrates():
+    try:
+        manager = FXRateManager(None)
+        return await manager.get_fxrates()
+    except Exception as e:
+        raise e
+
+@router.get("/fxrates/{fxrate_id}", tags=["Basic FX Rates"])
+async def get_fxrate(fxrate_id: int):
+    try:
+        manager = FXRateManager(None)
+        return await manager.get_fxrate(fxrate_id)
+    except Exception as e:
+        raise e
+
+@router.post("/add_fxrate", tags=["Basic FX Rates"])
+async def add_fxrate(fxrate: FXRateBase):
+    try:
+        manager = FXRateManager(fxrate)
+        return await manager.add_fxrate()
+    except Exception as e:
+        raise e
+
+@router.patch("/update_fxrate/{fxrate_id}", tags=["Basic FX Rates"])
+async def update_fxrate(fxrate_id: int, fxrate: FXRateBase):
+    try:
+        manager = FXRateManager(fxrate)
+        return await manager.update_fxrate(fxrate_id)
+    except Exception as e:
+        raise e
+
+@router.delete("/delete_fxrate/{fxrate_id}", tags=["Basic FX Rates"])
+async def delete_fxrate(fxrate_id: int):
+    try:
+        manager = FXRateManager(None)
+        return await manager.delete_fxrate(fxrate_id)
+    except Exception as e:
+        raise e
+
+@router.delete("/delete_fxrates", tags=["Basic FX Rates"])
+async def delete_fxrates():
+    try:
+        manager = FXRateManager(None)
+        return await manager.delete_fxrates()
     except Exception as e:
         raise e

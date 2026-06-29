@@ -5,7 +5,8 @@ from app.connection import supabase
 from app.treasury.schemas import (
     InvoiceBase,
     RevenueBase,
-    ReceivableBase
+    ReceivableBase,
+    FXRateBase
 )
 
 async def get_invoices_db():
@@ -71,4 +72,41 @@ async def update_receivable_by_invoice_db(invoice_id: int, receivable_data: dict
 
 async def update_revenue_by_invoice_db(invoice_id: int, revenue_data: dict):
     response = supabase.table("REVENUES").update(revenue_data).eq("invoice_id", invoice_id).execute()
+    return response.data
+
+async def get_fxrates_db():
+    response = supabase.table("FXRATES").select("*").execute()
+    return response.data
+
+async def get_fxrate_db(fxrate_id: int):
+    response = supabase.table("FXRATES").select("*").eq("id", fxrate_id).execute()
+    return response.data
+
+async def get_fxrate_for_date_db(target_date: date):
+    response = (
+        supabase.table("FXRATES")
+        .select("*")
+        .lte("date", target_date.isoformat())
+        .order("date", desc=True)
+        .limit(1)
+        .execute()
+    )
+    return response.data
+
+async def add_fxrate_db(fxrate: FXRateBase):
+    fxrate_data = fxrate.model_dump(mode="json")
+    response = supabase.table("FXRATES").insert(fxrate_data).execute()
+    return response.data
+
+async def update_fxrate_db(fxrate: FXRateBase, fxrate_id: int):
+    fxrate_data = fxrate.model_dump(exclude_unset=True, mode="json")
+    response = supabase.table("FXRATES").update(fxrate_data).eq("id", fxrate_id).execute()
+    return response.data
+
+async def delete_fxrate_db(fxrate_id: int):
+    response = supabase.table("FXRATES").delete().eq("id", fxrate_id).execute()
+    return response.data
+
+async def delete_fxrates_db():
+    response = supabase.table("FXRATES").delete().neq("id", 0).execute()
     return response.data

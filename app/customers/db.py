@@ -42,6 +42,10 @@ async def get_contract_db(contract_id: int):
     response = supabase.table("CONTRACTS").select("*").eq("id", contract_id).execute()
     return response.data
 
+async def get_contract_by_customer_db(customer_id: int):
+    response = supabase.table("CONTRACTS").select("*").eq("customer_id", customer_id).execute()
+    return response.data
+
 async def add_contract_db(contract: ContractBase):
     contract_data = contract.model_dump(mode="json")
     response = supabase.table("CONTRACTS").insert(contract_data).execute()
@@ -66,6 +70,16 @@ async def get_aggregates_db():
 
 async def get_aggregate_db(aggregate_id: int):
     response = supabase.table("AGGREGATES").select("*").eq("id", aggregate_id).execute()
+    return response.data
+
+async def get_aggregates_by_customer_db(customer_id: int):
+    response = (
+        supabase.table("AGGREGATES")
+        .select("*")
+        .eq("customer_id", customer_id)
+        .order("updated_at", desc=False)
+        .execute()
+    )
     return response.data
 
 async def get_latest_aggregate_by_customer_db(customer_id: int, before_date: date):

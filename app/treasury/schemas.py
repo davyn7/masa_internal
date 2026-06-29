@@ -6,6 +6,10 @@ from enum import Enum
 from datetime import date
 from typing import Optional, List
 
+class FXRateBase(BaseModel):
+    date: Optional[date] = None
+    rate: Optional[Decimal] = None
+
 class InvoiceBase(BaseModel):
     contract_id: Optional[int] = None
     invoice_number: Optional[str] = None
