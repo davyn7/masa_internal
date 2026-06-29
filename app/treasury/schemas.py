@@ -21,3 +21,19 @@ class InvoiceBase(BaseModel):
     pretax_idr: Optional[Decimal] = None
     vat_idr: Optional[Decimal] = None
     total_idr: Optional[Decimal] = None
+
+class RevenueBase(BaseModel):
+    invoice_id: Optional[int] = None
+    booking_date: Optional[date] = None
+    currency: Optional[str] = None
+    amount_usd: Optional[Decimal] = None
+    fx_rate: Optional[Decimal] = None
+    amount_idr: Optional[Decimal] = None
+
+class ReceivableBase(BaseModel):
+    invoice_id: Optional[int] = None
+    booking_date: Optional[date] = None
+    currency: Optional[str] = None
+    amount_usd: Optional[Decimal] = None
+    fx_rate: Optional[Decimal] = None
+    amount_idr: Optional[Decimal] = None
