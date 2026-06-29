@@ -67,6 +67,10 @@ async def get_aggregate_db(aggregate_id: int):
     response = supabase.table("AGGREGATES").select("*").eq("id", aggregate_id).execute()
     return response.data
 
+async def get_aggregate_by_customer_db(customer_id: int):
+    response = supabase.table("AGGREGATES").select("*").eq("customer_id", customer_id).execute()
+    return response.data
+
 async def add_aggregate_db(aggregate: AggregateBase):
     aggregate_data = aggregate.model_dump(mode="json")
     response = supabase.table("AGGREGATES").insert(aggregate_data).execute()

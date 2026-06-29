@@ -6,6 +6,11 @@ from app.treasury.schemas import (
     ReceivableBase
 )
 from datetime import date
+from decimal import Decimal
+from app.customers.db import (
+    get_contract_db,
+    get_aggregate_by_customer_db
+)
 from app.treasury.db import (
     get_invoices_db,
     get_invoice_db,
@@ -41,6 +46,20 @@ REVENUE_FIELD_MAP = {
     "total_usd": "amount_usd",
     "total_idr": "amount_idr",
 }
+
+# Vehicle types whose aggregate counts are multiplied by their matching
+# CONTRACTS price_<type> column to compute an invoice's pretax amount.
+VEHICLE_TYPES = [
+    "dt",
+    "exca",
+    "lv",
+    "dozer",
+    "grader",
+    "water_truck",
+    "fuel_truck",
+    "manhauler",
+]
+VAT_RATE = Decimal("0.11")
 
 class InvoiceManager:
     def __init__(self, invoice: InvoiceBase):
@@ -133,3 +152,51 @@ class InvoiceManager:
         await delete_receivable_by_invoice_db(invoice_id)
         await add_revenue_db(self._build_revenue(invoice_result[0]))
         return paid_result
+
+    async def generate_invoice(self, contract_id: int, fx_rate: Decimal, invoicing_date: date):
+        contract_result = await get_contract_db(contract_id)
+        contract = contract_result[0]
+
+        aggregate_result = await get_aggregate_by_customer_db(contract["customer_id"])
+        aggregate = aggregate_result[0]
+
+        pretax = Decimal("0")
+        for vehicle in VEHICLE_TYPES:
+            quantity = Decimal(str(aggregate.get(vehicle) or 0))
+            price = Decimal(str(contract.get(f"price_{vehicle}") or 0))
+            pretax += quantity * price
+
+        vat = pretax * VAT_RATE
+        total = pretax + vat
+
+        currency = contract.get("currency")
+        pretax_usd = vat_usd = total_usd = None
+        pretax_idr = vat_idr = total_idr = None
+
+        if currency == "IDR":
+            pretax_idr, vat_idr, total_idr = pretax, vat, total
+            if fx_rate:
+                pretax_usd = pretax / fx_rate
+                vat_usd = vat / fx_rate
+                total_usd = total / fx_rate
+        elif currency == "USD":
+            pretax_usd, vat_usd, total_usd = pretax, vat, total
+            if fx_rate:
+                pretax_idr = pretax * fx_rate
+                vat_idr = vat * fx_rate
+                total_idr = total * fx_rate
+
+        self.invoice = InvoiceBase(
+            contract_id=contract_id,
+            invoicing_date=invoicing_date,
+            is_paid=False,
+            currency=currency,
+            fx_rate=fx_rate,
+            pretax_usd=pretax_usd,
+            vat_usd=vat_usd,
+            total_usd=total_usd,
+            pretax_idr=pretax_idr,
+            vat_idr=vat_idr,
+            total_idr=total_idr,
+        )
+        return await self.add_invoice()

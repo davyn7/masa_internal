@@ -2,6 +2,7 @@
 
 from datetime import date
 from typing import Optional
+from decimal import Decimal
 from fastapi import APIRouter
 from app.treasury.managers import (
     InvoiceManager
@@ -25,6 +26,14 @@ async def mark_invoice_paid(invoice_id: int, payment_date: Optional[date] = None
     try:
         manager = InvoiceManager(None)
         return await manager.mark_invoice_paid(invoice_id, payment_date or date.today())
+    except Exception as e:
+        raise e
+
+@router.post("/generate_invoice", tags=["Extended Invoices"])
+async def generate_invoice(contract_id: int, fx_rate: Optional[Decimal] = None, invoicing_date: Optional[date] = None):
+    try:
+        manager = InvoiceManager(None)
+        return await manager.generate_invoice(contract_id, fx_rate, invoicing_date or date.today())
     except Exception as e:
         raise e
 
