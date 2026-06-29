@@ -1,5 +1,6 @@
 # app/customers/db.py
 
+from datetime import date
 from app.connection import supabase
 from app.customers.schemas import (
     CustomerBase,
@@ -67,8 +68,16 @@ async def get_aggregate_db(aggregate_id: int):
     response = supabase.table("AGGREGATES").select("*").eq("id", aggregate_id).execute()
     return response.data
 
-async def get_aggregate_by_customer_db(customer_id: int):
-    response = supabase.table("AGGREGATES").select("*").eq("customer_id", customer_id).execute()
+async def get_latest_aggregate_by_customer_db(customer_id: int, before_date: date):
+    response = (
+        supabase.table("AGGREGATES")
+        .select("*")
+        .eq("customer_id", customer_id)
+        .lte("updated_at", before_date.isoformat())
+        .order("updated_at", desc=True)
+        .limit(1)
+        .execute()
+    )
     return response.data
 
 async def add_aggregate_db(aggregate: AggregateBase):

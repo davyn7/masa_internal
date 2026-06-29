@@ -35,6 +35,7 @@ class ContractBase(BaseModel):
 
 class AggregateBase(BaseModel):
     customer_id: Optional[int] = None
+    updated_at: Optional[date] = None
     dt: Optional[int] = None
     exca: Optional[int] = None
     lv: Optional[int] = None

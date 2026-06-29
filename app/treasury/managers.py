@@ -7,9 +7,10 @@ from app.treasury.schemas import (
 )
 from datetime import date
 from decimal import Decimal
+from fastapi import HTTPException
 from app.customers.db import (
     get_contract_db,
-    get_aggregate_by_customer_db
+    get_latest_aggregate_by_customer_db
 )
 from app.treasury.db import (
     get_invoices_db,
@@ -155,9 +156,19 @@ class InvoiceManager:
 
     async def generate_invoice(self, contract_id: int, fx_rate: Decimal, invoicing_date: date):
         contract_result = await get_contract_db(contract_id)
+        if not contract_result:
+            raise HTTPException(status_code=404, detail=f"Contract {contract_id} not found")
         contract = contract_result[0]
 
-        aggregate_result = await get_aggregate_by_customer_db(contract["customer_id"])
+        aggregate_result = await get_latest_aggregate_by_customer_db(contract["customer_id"], invoicing_date)
+        if not aggregate_result:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"No aggregate found for customer {contract['customer_id']} "
+                    f"on or before invoicing date {invoicing_date.isoformat()}"
+                ),
+            )
         aggregate = aggregate_result[0]
 
         pretax = Decimal("0")

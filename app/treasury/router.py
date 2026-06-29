@@ -19,6 +19,10 @@ router = APIRouter(prefix="/treasury")
 async def get_financial_kpis():
     pass
 
+@router.get("/mrr_by_customer", tags=["Financial KPIs"])
+async def get_mrr_by_customer(customer_id: int):
+    pass
+
 # Invoice Routers
 
 @router.patch("/mark_invoice_paid/{invoice_id}", tags=["Extended Invoices"])

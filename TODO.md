@@ -1,0 +1,5 @@
+Create `INVOICE_LINE_ITEMS` table.
+Instead of contract to invoice, make it contract to invoice line items then to invoice.
+Can edit line items (like price per unit and number of units).
+Can add new line items such as Telkomsel charges, Performance Assurance, flight ticket reimbursements, etc.
+
