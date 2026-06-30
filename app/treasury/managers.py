@@ -512,6 +512,9 @@ class KpiManager:
     async def get_arr_by_customer_entity(self, legal_name: str):
         return [self._scale_arr(mrr) for mrr in await self.get_mrr_by_customer_entity(legal_name)]
 
+    async def get_arr_by_site(self, site_legal_name: str):
+        return [self._scale_arr(mrr) for mrr in await self.get_mrr_by_site(site_legal_name)]
+
 
 class FXRateManager:
     def __init__(self, fxrate: FXRateBase):

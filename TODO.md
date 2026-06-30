@@ -13,3 +13,7 @@ MRR & ARR by Resource, by Site Legal Name, by Customer Legal Name
 Create `app/assets` directory. Store `AGGREGATES`, `ASSETS`
 
 Potential Revenue
+
+Create `INACTIVE_CONTRACTS` table.
+
+Create `INACTIVE_DEVICES` table.

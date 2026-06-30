@@ -80,7 +80,11 @@ async def get_arr_by_customer_entity(legal_name: str):
 
 @router.get("/arr_by_site", tags=["Financial KPIs"])
 async def get_arr_by_site(site_legal_name: str):
-    pass
+    try:
+        manager = KpiManager()
+        return await manager.get_arr_by_site(site_legal_name)
+    except Exception as e:
+        raise e
 
 # Invoice Routers
 
