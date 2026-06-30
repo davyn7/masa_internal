@@ -86,8 +86,8 @@ async def get_fxrate_for_date_db(target_date: date):
     response = (
         supabase.table("FXRATES")
         .select("*")
-        .lte("date", target_date.isoformat())
-        .order("date", desc=True)
+        .lte("fx_date", target_date.isoformat())
+        .order("fx_date", desc=True)
         .limit(1)
         .execute()
     )

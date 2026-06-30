@@ -72,6 +72,7 @@ VEHICLE_TYPES = [
     "manhauler",
 ]
 VAT_RATE = Decimal("0.11")
+DEFAULT_RATE = Decimal("17500")
 
 
 def _to_date(value):
@@ -283,18 +284,19 @@ class KpiManager:
             amount = self._aggregate_amount(contract, active) if active else Decimal("0")
 
             rate_result = await get_fxrate_for_date_db(month)
-            rate = Decimal(str(rate_result[0]["rate"])) if rate_result and rate_result[0].get("rate") else None
+            if rate_result and rate_result[0].get("rate"):
+                rate = Decimal(str(rate_result[0]["rate"]))
+            else:
+                rate = DEFAULT_RATE
 
             amount_usd = None
             amount_idr = None
             if currency == "USD":
                 amount_usd = amount
-                if rate:
-                    amount_idr = amount * rate
+                amount_idr = amount * rate
             elif currency == "IDR":
                 amount_idr = amount
-                if rate:
-                    amount_usd = amount / rate
+                amount_usd = amount / rate
 
             monthly.append({
                 "month": month.isoformat(),

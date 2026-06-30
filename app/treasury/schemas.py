@@ -7,7 +7,7 @@ from datetime import date
 from typing import Optional, List
 
 class FXRateBase(BaseModel):
-    date: Optional[date] = None
+    fx_date: Optional[date] = None
     rate: Optional[Decimal] = None
 
 class InvoiceBase(BaseModel):
