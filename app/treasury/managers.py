@@ -73,6 +73,7 @@ VEHICLE_TYPES = [
 ]
 VAT_RATE = Decimal("0.11")
 DEFAULT_RATE = Decimal("17500")
+MONTHS_PER_YEAR = 12
 
 
 def _to_date(value):
@@ -314,6 +315,27 @@ class KpiManager:
             "monthly": monthly,
             "total_usd": total_usd,
             "total_idr": total_idr,
+        }
+
+    async def get_arr_by_customer(self, customer_id: int):
+        mrr = await self.get_mrr_by_customer(customer_id)
+
+        monthly = [
+            {
+                "month": entry["month"],
+                "currency": entry["currency"],
+                "amount_usd": entry["amount_usd"] * MONTHS_PER_YEAR if entry["amount_usd"] is not None else None,
+                "amount_idr": entry["amount_idr"] * MONTHS_PER_YEAR if entry["amount_idr"] is not None else None,
+            }
+            for entry in mrr["monthly"]
+        ]
+
+        return {
+            "customer_id": mrr["customer_id"],
+            "currency": mrr["currency"],
+            "monthly": monthly,
+            "total_usd": mrr["total_usd"] * MONTHS_PER_YEAR,
+            "total_idr": mrr["total_idr"] * MONTHS_PER_YEAR,
         }
 
 
