@@ -6,16 +6,21 @@ from app.treasury.schemas import (
     ReceivableBase,
     FXRateBase
 )
+import asyncio
+import bisect
 import calendar
 from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 from app.customers.db import (
     get_customers_db,
+    get_customer_db,
     get_contract_db,
+    get_contracts_db,
     get_contract_by_customer_db,
     get_latest_aggregate_by_customer_db,
-    get_aggregates_by_customer_db
+    get_aggregates_by_customer_db,
+    get_aggregates_db
 )
 from app.treasury.db import (
     get_invoices_db,
@@ -35,7 +40,6 @@ from app.treasury.db import (
     update_revenue_by_invoice_db,
     get_fxrates_db,
     get_fxrate_db,
-    get_fxrate_for_date_db,
     add_fxrate_db,
     update_fxrate_db,
     delete_fxrate_db,
@@ -250,11 +254,32 @@ class KpiManager:
             amount += quantity * price
         return amount
 
-    async def get_mrr_by_customer(self, customer_id: int):
-        contract_result = await get_contract_by_customer_db(customer_id)
-        if not contract_result:
+    def _prepare_fxrates(self, fxrates: list):
+        # Pre-sort rates once so monthly lookups become in-memory binary searches
+        # instead of one DB round-trip per month.
+        parsed = []
+        for entry in fxrates or []:
+            fx_date = _to_date(entry.get("fx_date"))
+            if fx_date is None:
+                continue
+            rate = entry.get("rate")
+            parsed.append((fx_date, Decimal(str(rate)) if rate else None))
+        parsed.sort(key=lambda item: item[0])
+        dates = [item[0] for item in parsed]
+        rates = [item[1] for item in parsed]
+        return dates, rates
+
+    def _select_rate(self, prepared_rates, month: date) -> Decimal:
+        dates, rates = prepared_rates
+        idx = bisect.bisect_right(dates, month) - 1
+        if idx >= 0 and rates[idx] is not None:
+            return rates[idx]
+        return DEFAULT_RATE
+
+    def _compute_mrr(self, customer: dict, contract: dict, aggregates: list, prepared_rates) -> dict:
+        customer_id = customer.get("id")
+        if not contract:
             raise HTTPException(status_code=404, detail=f"No contract found for customer {customer_id}")
-        contract = contract_result[0]
 
         start_date = _to_date(contract.get("start_date"))
         end_date = _to_date(contract.get("end_date"))
@@ -264,10 +289,9 @@ class KpiManager:
                 detail=f"Contract for customer {customer_id} is missing start_date or end_date",
             )
 
-        aggregate_result = await get_aggregates_by_customer_db(customer_id)
-        if not aggregate_result:
+        if not aggregates:
             raise HTTPException(status_code=404, detail=f"No aggregates found for customer {customer_id}")
-        aggregates = sorted(aggregate_result, key=lambda a: _to_date(a.get("updated_at")))
+        aggregates = sorted(aggregates, key=lambda a: _to_date(a.get("updated_at")))
 
         currency = contract.get("currency")
         monthly = []
@@ -284,12 +308,7 @@ class KpiManager:
                     break
 
             amount = self._aggregate_amount(contract, active) if active else Decimal("0")
-
-            rate_result = await get_fxrate_for_date_db(month)
-            if rate_result and rate_result[0].get("rate"):
-                rate = Decimal(str(rate_result[0]["rate"]))
-            else:
-                rate = DEFAULT_RATE
+            rate = self._select_rate(prepared_rates, month)
 
             amount_usd = None
             amount_idr = None
@@ -312,43 +331,17 @@ class KpiManager:
 
         return {
             "customer_id": customer_id,
+            "name": customer.get("name"),
+            "legal_name": customer.get("legal_name"),
+            "site_name": customer.get("site_name"),
+            "site_legal_name": customer.get("site_legal_name"),
             "currency": currency,
             "monthly": monthly,
             "total_usd": total_usd,
             "total_idr": total_idr,
         }
 
-    async def get_mrr_all_customers(self):
-        customer_result = await get_customers_db()
-        if not customer_result:
-            return []
-
-        results = []
-        for customer in customer_result:
-            try:
-                results.append(await self.get_mrr_by_customer(customer["id"]))
-            except HTTPException:
-                # Skip customers without the contract/aggregate data needed for MRR.
-                continue
-        return results
-
-    async def get_arr_all_customers(self):
-        customer_result = await get_customers_db()
-        if not customer_result:
-            return []
-
-        results = []
-        for customer in customer_result:
-            try:
-                results.append(await self.get_arr_by_customer(customer["id"]))
-            except HTTPException:
-                # Skip customers without the contract/aggregate data needed for ARR.
-                continue
-        return results
-
-    async def get_arr_by_customer(self, customer_id: int):
-        mrr = await self.get_mrr_by_customer(customer_id)
-
+    def _scale_arr(self, mrr: dict) -> dict:
         monthly = [
             {
                 "month": entry["month"],
@@ -361,11 +354,75 @@ class KpiManager:
 
         return {
             "customer_id": mrr["customer_id"],
+            "name": mrr["name"],
+            "legal_name": mrr["legal_name"],
+            "site_name": mrr["site_name"],
+            "site_legal_name": mrr["site_legal_name"],
             "currency": mrr["currency"],
             "monthly": monthly,
             "total_usd": mrr["total_usd"] * MONTHS_PER_YEAR,
             "total_idr": mrr["total_idr"] * MONTHS_PER_YEAR,
         }
+
+    async def get_mrr_by_customer(self, customer_id: int):
+        customer_result, contract_result, aggregate_result, fxrates = await asyncio.gather(
+            get_customer_db(customer_id),
+            get_contract_by_customer_db(customer_id),
+            get_aggregates_by_customer_db(customer_id),
+            get_fxrates_db(),
+        )
+
+        if not customer_result:
+            raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found")
+
+        contract = contract_result[0] if contract_result else None
+        prepared_rates = self._prepare_fxrates(fxrates)
+        return self._compute_mrr(customer_result[0], contract, aggregate_result, prepared_rates)
+
+    async def get_mrr_all_customers(self):
+        customers, contracts, aggregates, fxrates = await asyncio.gather(
+            get_customers_db(),
+            get_contracts_db(),
+            get_aggregates_db(),
+            get_fxrates_db(),
+        )
+        if not customers:
+            return []
+
+        contracts_by_customer = {}
+        for contract in contracts or []:
+            contracts_by_customer.setdefault(contract.get("customer_id"), []).append(contract)
+
+        aggregates_by_customer = {}
+        for aggregate in aggregates or []:
+            aggregates_by_customer.setdefault(aggregate.get("customer_id"), []).append(aggregate)
+
+        prepared_rates = self._prepare_fxrates(fxrates)
+
+        results = []
+        for customer in customers:
+            customer_contracts = contracts_by_customer.get(customer.get("id"))
+            contract = customer_contracts[0] if customer_contracts else None
+            try:
+                results.append(
+                    self._compute_mrr(
+                        customer,
+                        contract,
+                        aggregates_by_customer.get(customer.get("id"), []),
+                        prepared_rates,
+                    )
+                )
+            except HTTPException:
+                # Skip customers without the contract/aggregate data needed for MRR.
+                continue
+        return results
+
+    async def get_arr_by_customer(self, customer_id: int):
+        mrr = await self.get_mrr_by_customer(customer_id)
+        return self._scale_arr(mrr)
+
+    async def get_arr_all_customers(self):
+        return [self._scale_arr(mrr) for mrr in await self.get_mrr_all_customers()]
 
 
 class FXRateManager:
