@@ -332,6 +332,20 @@ class KpiManager:
                 continue
         return results
 
+    async def get_arr_all_customers(self):
+        customer_result = await get_customers_db()
+        if not customer_result:
+            return []
+
+        results = []
+        for customer in customer_result:
+            try:
+                results.append(await self.get_arr_by_customer(customer["id"]))
+            except HTTPException:
+                # Skip customers without the contract/aggregate data needed for ARR.
+                continue
+        return results
+
     async def get_arr_by_customer(self, customer_id: int):
         mrr = await self.get_mrr_by_customer(customer_id)
 

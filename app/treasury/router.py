@@ -46,6 +46,14 @@ async def get_arr_by_customer(customer_id: int):
     except Exception as e:
         raise e
 
+@router.get("/arr_all_customers", tags=["Financial KPIs"])
+async def get_arr_all_customers():
+    try:
+        manager = KpiManager()
+        return await manager.get_arr_all_customers()
+    except Exception as e:
+        raise e
+
 # Invoice Routers
 
 @router.patch("/mark_invoice_paid/{invoice_id}", tags=["Extended Invoices"])
