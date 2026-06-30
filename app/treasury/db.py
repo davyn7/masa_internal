@@ -17,6 +17,16 @@ async def get_invoice_db(invoice_id: int):
     response = supabase.table("INVOICES").select("*").eq("id", invoice_id).execute()
     return response.data
 
+async def count_invoices_for_year_db(year: int):
+    response = (
+        supabase.table("INVOICES")
+        .select("id", count="exact", head=True)
+        .gte("invoicing_date", date(year, 1, 1).isoformat())
+        .lt("invoicing_date", date(year + 1, 1, 1).isoformat())
+        .execute()
+    )
+    return response.count or 0
+
 async def add_invoice_db(invoice: InvoiceBase):
     invoice_data = invoice.model_dump(mode="json")
     response = supabase.table("INVOICES").insert(invoice_data).execute()

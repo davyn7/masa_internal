@@ -33,6 +33,7 @@ class RevenueBase(BaseModel):
     amount_usd: Optional[Decimal] = None
     fx_rate: Optional[Decimal] = None
     amount_idr: Optional[Decimal] = None
+    due_date: Optional[date] = None
 
 class ReceivableBase(BaseModel):
     invoice_id: Optional[int] = None
@@ -41,3 +42,4 @@ class ReceivableBase(BaseModel):
     amount_usd: Optional[Decimal] = None
     fx_rate: Optional[Decimal] = None
     amount_idr: Optional[Decimal] = None
+    due_date: Optional[date] = None

@@ -9,3 +9,5 @@ Add `due_date` to `RECEIVABLES` and `REVENUES`.
 Past due?
 
 When generating invoices, auto-generate the invoice number. Also auto-generate due date to H+14.
+
+MRR & ARR by Resource, by Site Legal Name, by Customer Legal Name

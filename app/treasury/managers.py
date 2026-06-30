@@ -9,7 +9,7 @@ from app.treasury.schemas import (
 import asyncio
 import bisect
 import calendar
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from fastapi import HTTPException
 from app.customers.db import (
@@ -25,6 +25,7 @@ from app.customers.db import (
 from app.treasury.db import (
     get_invoices_db,
     get_invoice_db,
+    count_invoices_for_year_db,
     add_invoice_db,
     update_invoice_db,
     delete_invoice_db,
@@ -51,6 +52,7 @@ from app.treasury.db import (
 # invoicing_date for receivables, payment_date for revenues.
 RECEIVABLE_FIELD_MAP = {
     "invoicing_date": "booking_date",
+    "due_date": "due_date",
     "currency": "currency",
     "fx_rate": "fx_rate",
     "total_usd": "amount_usd",
@@ -58,6 +60,7 @@ RECEIVABLE_FIELD_MAP = {
 }
 REVENUE_FIELD_MAP = {
     "payment_date": "booking_date",
+    "due_date": "due_date",
     "currency": "currency",
     "fx_rate": "fx_rate",
     "total_usd": "amount_usd",
@@ -102,6 +105,7 @@ class InvoiceManager:
         return ReceivableBase(
             invoice_id=invoice.get("id"),
             booking_date=invoice.get("invoicing_date"),
+            due_date=invoice.get("due_date"),
             currency=invoice.get("currency"),
             amount_usd=invoice.get("total_usd"),
             fx_rate=invoice.get("fx_rate"),
@@ -112,6 +116,7 @@ class InvoiceManager:
         return RevenueBase(
             invoice_id=invoice.get("id"),
             booking_date=invoice.get("payment_date"),
+            due_date=invoice.get("due_date"),
             currency=invoice.get("currency"),
             amount_usd=invoice.get("total_usd"),
             fx_rate=invoice.get("fx_rate"),
@@ -187,10 +192,17 @@ class InvoiceManager:
         return paid_result
 
     async def generate_invoice(self, contract_id: int, fx_rate: Decimal, invoicing_date: date):
-        contract_result = await get_contract_db(contract_id)
+        contract_result, invoice_count = await asyncio.gather(
+            get_contract_db(contract_id),
+            count_invoices_for_year_db(invoicing_date.year),
+        )
         if not contract_result:
             raise HTTPException(status_code=404, detail=f"Contract {contract_id} not found")
         contract = contract_result[0]
+
+        invoice_number = (
+            f"{invoicing_date:%y/%d/%m}/{invoice_count + 1:04d}"
+        )
 
         aggregate_result = await get_latest_aggregate_by_customer_db(contract["customer_id"], invoicing_date)
         if not aggregate_result:
@@ -231,7 +243,9 @@ class InvoiceManager:
 
         self.invoice = InvoiceBase(
             contract_id=contract_id,
+            invoice_number=invoice_number,
             invoicing_date=invoicing_date,
+            due_date=invoicing_date + timedelta(days=14),
             is_paid=False,
             currency=currency,
             fx_rate=fx_rate,
