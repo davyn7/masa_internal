@@ -469,6 +469,39 @@ class KpiManager:
         )
         return results
 
+    async def get_mrr_by_site(self, site_legal_name: str):
+        logger.info("Computing MRR for site site_legal_name=%r", site_legal_name)
+        customers, contracts, aggregates, fxrates = await asyncio.gather(
+            get_customers_db(),
+            get_contracts_db(),
+            get_aggregates_db(),
+            get_fxrates_db(),
+        )
+
+        site_customers = [
+            customer for customer in (customers or [])
+            if customer.get("site_legal_name") == site_legal_name
+        ]
+        if not site_customers:
+            logger.warning("No customers found for site_legal_name=%r", site_legal_name)
+            raise HTTPException(status_code=404, detail=f"No customers found for site legal name '{site_legal_name}'")
+
+        logger.info(
+            "Found %d customer(s) for site_legal_name=%r: %s",
+            len(site_customers),
+            site_legal_name,
+            [customer.get("id") for customer in site_customers],
+        )
+
+        results = self._build_mrrs(site_customers, contracts, aggregates, fxrates)
+        logger.info(
+            "Computed MRR for %d of %d customer(s) for site_legal_name=%r",
+            len(results),
+            len(site_customers),
+            site_legal_name,
+        )
+        return results
+
     async def get_arr_by_customer(self, customer_id: int):
         mrr = await self.get_mrr_by_customer(customer_id)
         return self._scale_arr(mrr)
