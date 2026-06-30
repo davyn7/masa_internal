@@ -1,3 +1,4 @@
+import logging
 from typing import Union
 from fastapi import FastAPI
 from dotenv import load_dotenv
@@ -6,6 +7,8 @@ from app.customers.router import router as customers_router
 from app.treasury.router import router as treasury_router
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 

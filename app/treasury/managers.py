@@ -9,6 +9,7 @@ from app.treasury.schemas import (
 import asyncio
 import bisect
 import calendar
+import logging
 from datetime import date, timedelta
 from decimal import Decimal
 from fastapi import HTTPException
@@ -46,6 +47,8 @@ from app.treasury.db import (
     delete_fxrate_db,
     delete_fxrates_db
 )
+
+logger = logging.getLogger(__name__)
 
 # Maps INVOICES fields to their RECEIVABLES/REVENUES counterparts so shared
 # values stay in sync. booking_date is sourced differently per ledger:
@@ -393,16 +396,7 @@ class KpiManager:
         prepared_rates = self._prepare_fxrates(fxrates)
         return self._compute_mrr(customer_result[0], contract, aggregate_result, prepared_rates)
 
-    async def get_mrr_all_customers(self):
-        customers, contracts, aggregates, fxrates = await asyncio.gather(
-            get_customers_db(),
-            get_contracts_db(),
-            get_aggregates_db(),
-            get_fxrates_db(),
-        )
-        if not customers:
-            return []
-
+    def _build_mrrs(self, customers: list, contracts: list, aggregates: list, fxrates: list) -> list:
         contracts_by_customer = {}
         for contract in contracts or []:
             contracts_by_customer.setdefault(contract.get("customer_id"), []).append(contract)
@@ -414,7 +408,7 @@ class KpiManager:
         prepared_rates = self._prepare_fxrates(fxrates)
 
         results = []
-        for customer in customers:
+        for customer in customers or []:
             customer_contracts = contracts_by_customer.get(customer.get("id"))
             contract = customer_contracts[0] if customer_contracts else None
             try:
@@ -429,6 +423,50 @@ class KpiManager:
             except HTTPException:
                 # Skip customers without the contract/aggregate data needed for MRR.
                 continue
+        return results
+
+    async def get_mrr_all_customers(self):
+        customers, contracts, aggregates, fxrates = await asyncio.gather(
+            get_customers_db(),
+            get_contracts_db(),
+            get_aggregates_db(),
+            get_fxrates_db(),
+        )
+        if not customers:
+            return []
+        return self._build_mrrs(customers, contracts, aggregates, fxrates)
+
+    async def get_mrr_by_customer_entity(self, legal_name: str):
+        logger.info("Computing MRR for customer entity legal_name=%r", legal_name)
+        customers, contracts, aggregates, fxrates = await asyncio.gather(
+            get_customers_db(),
+            get_contracts_db(),
+            get_aggregates_db(),
+            get_fxrates_db(),
+        )
+
+        entity_customers = [
+            customer for customer in (customers or [])
+            if customer.get("legal_name") == legal_name
+        ]
+        if not entity_customers:
+            logger.warning("No customers found for legal_name=%r", legal_name)
+            raise HTTPException(status_code=404, detail=f"No customers found for legal name '{legal_name}'")
+
+        logger.info(
+            "Found %d site(s) for legal_name=%r: %s",
+            len(entity_customers),
+            legal_name,
+            [customer.get("id") for customer in entity_customers],
+        )
+
+        results = self._build_mrrs(entity_customers, contracts, aggregates, fxrates)
+        logger.info(
+            "Computed MRR for %d of %d site(s) for legal_name=%r",
+            len(results),
+            len(entity_customers),
+            legal_name,
+        )
         return results
 
     async def get_arr_by_customer(self, customer_id: int):

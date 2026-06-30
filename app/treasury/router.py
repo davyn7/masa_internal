@@ -38,6 +38,18 @@ async def get_mrr_all_customers():
     except Exception as e:
         raise e
 
+@router.get("/mrr_by_customer_entity", tags=["Financial KPIs"])
+async def get_mrr_by_customer_entity(legal_name: str):
+    try:
+        manager = KpiManager()
+        return await manager.get_mrr_by_customer_entity(legal_name)
+    except Exception as e:
+        raise e
+
+@router.get("/mrr_by_site", tags=["Financial KPIs"])
+async def get_mrr_by_site(site_legal_name: str):
+    pass
+
 @router.get("/arr_by_customer", tags=["Financial KPIs"])
 async def get_arr_by_customer(customer_id: int):
     try:
@@ -53,6 +65,14 @@ async def get_arr_all_customers():
         return await manager.get_arr_all_customers()
     except Exception as e:
         raise e
+
+@router.get("/arr_by_customer_entity", tags=["Financial KPIs"])
+async def get_arr_by_customer_entity(legal_name: str):
+    pass
+
+@router.get("/arr_by_site", tags=["Financial KPIs"])
+async def get_arr_by_site(site_legal_name: str):
+    pass
 
 # Invoice Routers
 
