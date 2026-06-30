@@ -11,6 +11,7 @@ from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 from app.customers.db import (
+    get_customers_db,
     get_contract_db,
     get_contract_by_customer_db,
     get_latest_aggregate_by_customer_db,
@@ -316,6 +317,20 @@ class KpiManager:
             "total_usd": total_usd,
             "total_idr": total_idr,
         }
+
+    async def get_mrr_all_customers(self):
+        customer_result = await get_customers_db()
+        if not customer_result:
+            return []
+
+        results = []
+        for customer in customer_result:
+            try:
+                results.append(await self.get_mrr_by_customer(customer["id"]))
+            except HTTPException:
+                # Skip customers without the contract/aggregate data needed for MRR.
+                continue
+        return results
 
     async def get_arr_by_customer(self, customer_id: int):
         mrr = await self.get_mrr_by_customer(customer_id)

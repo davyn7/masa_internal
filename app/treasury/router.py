@@ -30,6 +30,14 @@ async def get_mrr_by_customer(customer_id: int):
     except Exception as e:
         raise e
 
+@router.get("/mrr_all_customers", tags=["Financial KPIs"])
+async def get_mrr_all_customers():
+    try:
+        manager = KpiManager()
+        return await manager.get_mrr_all_customers()
+    except Exception as e:
+        raise e
+
 @router.get("/arr_by_customer", tags=["Financial KPIs"])
 async def get_arr_by_customer(customer_id: int):
     try:
