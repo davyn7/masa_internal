@@ -635,6 +635,62 @@ class KpiManager:
             date(today.year, today.month, 1), current_totals, monthly_totals
         )
 
+    def _count_customers_with_active_contract(self, mrrs: list, year: int, month: int) -> int:
+        count = 0
+        for mrr in mrrs or []:
+            for entry in mrr.get("monthly") or []:
+                entry_month = _to_date(entry.get("month"))
+                if entry_month and entry_month.year == year and entry_month.month == month:
+                    count += 1
+                    break
+        return count
+
+    def _average_mrr_arr_per_customer(
+        self, mrrs: list, monthly_totals: dict, year: int, month: int
+    ) -> tuple[Decimal, Decimal, Decimal, Decimal, int]:
+        totals = self._get_totals_for_calendar_month(monthly_totals, year, month)
+        customer_count = self._count_customers_with_active_contract(mrrs, year, month)
+        if customer_count == 0:
+            return Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"), 0
+        count = Decimal(customer_count)
+        return (
+            totals["mrr_total_idr"] / count,
+            totals["mrr_total_usd"] / count,
+            totals["arr_total_idr"] / count,
+            totals["arr_total_usd"] / count,
+            customer_count,
+        )
+
+    async def get_average_mrr_arr_per_customer_current(self):
+        mrrs = await self.get_mrr_all_customers()
+        today = date.today()
+        monthly_totals = self._build_monthly_totals(mrrs)
+        prev_month = _add_months(date(today.year, today.month, 1), -1)
+
+        (
+            mrr_per_customer_idr,
+            mrr_per_customer_usd,
+            arr_per_customer_idr,
+            arr_per_customer_usd,
+            active_customers,
+        ) = self._average_mrr_arr_per_customer(mrrs, monthly_totals, today.year, today.month)
+        prev_mrr_per_customer_idr, _, _, _, _ = self._average_mrr_arr_per_customer(
+            mrrs, monthly_totals, prev_month.year, prev_month.month
+        )
+
+        return {
+            "year": today.year,
+            "month": today.month,
+            "active_customers": active_customers,
+            "mrr_per_customer_idr": mrr_per_customer_idr,
+            "mrr_per_customer_usd": mrr_per_customer_usd,
+            "arr_per_customer_idr": arr_per_customer_idr,
+            "arr_per_customer_usd": arr_per_customer_usd,
+            "percentage_change": self._percentage_change(
+                mrr_per_customer_idr, prev_mrr_per_customer_idr
+            ),
+        }
+
 
 class FXRateManager:
     def __init__(self, fxrate: FXRateBase):

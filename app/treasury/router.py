@@ -102,6 +102,18 @@ async def get_arr_by_site(site_legal_name: str):
     except Exception as e:
         raise e
 
+@router.get("/average_mrr_arr_per_customer_current", tags=["Financial KPIs"])
+async def get_average_mrr_arr_per_customer_current():
+    try:
+        manager = KpiManager()
+        return await manager.get_average_mrr_arr_per_customer_current()
+    except Exception as e:
+        raise e
+
+@router.get("/average_mrr_arr_per_unit_current", tags=["Financial KPIs"])
+async def get_average_mrr_arr_per_unit_current():
+    pass
+
 # Invoice Routers
 
 @router.patch("/mark_invoice_paid/{invoice_id}", tags=["Extended Invoices"])
