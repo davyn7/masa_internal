@@ -8,7 +8,7 @@ Create `AGGREGATE_UNINSTALLED` table.
 Add `due_date` to `RECEIVABLES` and `REVENUES`.
 Past due?
 
-MRR & ARR by Resource, by Site Legal Name, by Customer Legal Name
+MRR & ARR by Resource?
 
 Create `app/assets` directory. Store `AGGREGATES`, `ASSETS`
 

@@ -22,6 +22,26 @@ router = APIRouter(prefix="/treasury")
 async def get_financial_kpis():
     pass
 
+@router.get("/mrr_arr_monthly", tags=["Financial KPIs"])
+async def get_mrr_arr_monthly():
+    try:
+        manager = KpiManager()
+        return await manager.get_mrr_arr_monthly()
+    except Exception as e:
+        raise e
+
+@router.get("/mrr_arr_current", tags=["Financial KPIs"])
+async def get_mrr_arr_current():
+    pass
+
+@router.get("/mrr_arr_monthly_by_currency", tags=["Financial KPIs"])
+async def get_mrr_arr_monthly_by_currency():
+    pass
+
+@router.get("/mrr_arr_current_by_currency", tags=["Financial KPIs"])
+async def get_mrr_arr_current_by_currency():
+    pass
+
 @router.get("/mrr_by_customer", tags=["Financial KPIs"])
 async def get_mrr_by_customer(customer_id: int):
     try:

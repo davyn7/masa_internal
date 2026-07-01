@@ -515,6 +515,87 @@ class KpiManager:
     async def get_arr_by_site(self, site_legal_name: str):
         return [self._scale_arr(mrr) for mrr in await self.get_mrr_by_site(site_legal_name)]
 
+    def _empty_monthly_totals(self) -> dict:
+        zero = Decimal("0")
+        return {
+            "mrr_idr_original": zero,
+            "mrr_usd_original": zero,
+            "mrr_total_idr": zero,
+            "mrr_total_usd": zero,
+            "mrr_usd_converted_idr": zero,
+            "arr_idr_original": zero,
+            "arr_usd_original": zero,
+            "arr_total_idr": zero,
+            "arr_total_usd": zero,
+            "arr_usd_converted_idr": zero,
+        }
+
+    def _usd_percentage(self, usd_converted_idr: Decimal, total_idr: Decimal) -> Decimal:
+        if total_idr == 0:
+            return Decimal("0")
+        return (usd_converted_idr / total_idr) * Decimal("100")
+
+    def _finalize_monthly_entry(self, month: date, totals: dict) -> dict:
+        return {
+            "year": month.year,
+            "month": month.month,
+            "mrr_idr_original": totals["mrr_idr_original"],
+            "mrr_usd_original": totals["mrr_usd_original"],
+            "mrr_total_idr": totals["mrr_total_idr"],
+            "mrr_total_usd": totals["mrr_total_usd"],
+            "mrr_usd_percentage": self._usd_percentage(
+                totals["mrr_usd_converted_idr"], totals["mrr_total_idr"]
+            ),
+            "arr_idr_original": totals["arr_idr_original"],
+            "arr_usd_original": totals["arr_usd_original"],
+            "arr_total_idr": totals["arr_total_idr"],
+            "arr_total_usd": totals["arr_total_usd"],
+            "arr_usd_percentage": self._usd_percentage(
+                totals["arr_usd_converted_idr"], totals["arr_total_idr"]
+            ),
+        }
+
+    def _aggregate_mrr_arr_monthly(self, mrrs: list) -> list:
+        monthly_totals = {}
+
+        for mrr in mrrs or []:
+            currency = mrr.get("currency")
+            for entry in mrr.get("monthly") or []:
+                month = _to_date(entry.get("month"))
+                if month is None:
+                    continue
+
+                month_key = month.isoformat()
+                totals = monthly_totals.setdefault(month_key, self._empty_monthly_totals())
+
+                amount_idr = entry.get("amount_idr") or Decimal("0")
+                amount_usd = entry.get("amount_usd") or Decimal("0")
+
+                if currency == "IDR":
+                    totals["mrr_idr_original"] += amount_idr
+                elif currency == "USD":
+                    totals["mrr_usd_original"] += amount_usd
+                    totals["mrr_usd_converted_idr"] += amount_idr
+
+                totals["mrr_total_idr"] += amount_idr
+                totals["mrr_total_usd"] += amount_usd
+
+                totals["arr_idr_original"] += amount_idr * MONTHS_PER_YEAR
+                totals["arr_usd_original"] += amount_usd * MONTHS_PER_YEAR
+                totals["arr_total_idr"] += amount_idr * MONTHS_PER_YEAR
+                totals["arr_total_usd"] += amount_usd * MONTHS_PER_YEAR
+                if currency == "USD":
+                    totals["arr_usd_converted_idr"] += amount_idr * MONTHS_PER_YEAR
+
+        return [
+            self._finalize_monthly_entry(_to_date(month_key), totals)
+            for month_key, totals in sorted(monthly_totals.items())
+        ]
+
+    async def get_mrr_arr_monthly(self):
+        mrrs = await self.get_mrr_all_customers()
+        return self._aggregate_mrr_arr_monthly(mrrs)
+
 
 class FXRateManager:
     def __init__(self, fxrate: FXRateBase):
