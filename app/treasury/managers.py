@@ -264,6 +264,11 @@ class InvoiceManager:
 
 
 class KpiManager:
+    def _unit_count(self, aggregate: Optional[dict]) -> int:
+        if not aggregate:
+            return 0
+        return sum(int(aggregate.get(vehicle) or 0) for vehicle in VEHICLE_TYPES)
+
     def _aggregate_amount(self, contract: dict, aggregate: dict) -> Decimal:
         amount = Decimal("0")
         for vehicle in VEHICLE_TYPES:
@@ -342,6 +347,7 @@ class KpiManager:
                 "currency": currency,
                 "amount_usd": amount_usd,
                 "amount_idr": amount_idr,
+                "unit_count": self._unit_count(active),
             })
             total_usd += amount_usd or Decimal("0")
             total_idr += amount_idr or Decimal("0")
@@ -688,6 +694,62 @@ class KpiManager:
             "arr_per_customer_usd": arr_per_customer_usd,
             "percentage_change": self._percentage_change(
                 mrr_per_customer_idr, prev_mrr_per_customer_idr
+            ),
+        }
+
+    def _count_active_units(self, mrrs: list, year: int, month: int) -> int:
+        total = 0
+        for mrr in mrrs or []:
+            for entry in mrr.get("monthly") or []:
+                entry_month = _to_date(entry.get("month"))
+                if entry_month and entry_month.year == year and entry_month.month == month:
+                    total += entry.get("unit_count") or 0
+                    break
+        return total
+
+    def _average_mrr_arr_per_unit(
+        self, mrrs: list, monthly_totals: dict, year: int, month: int
+    ) -> tuple[Decimal, Decimal, Decimal, Decimal, int]:
+        totals = self._get_totals_for_calendar_month(monthly_totals, year, month)
+        unit_count = self._count_active_units(mrrs, year, month)
+        if unit_count == 0:
+            return Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"), 0
+        count = Decimal(unit_count)
+        return (
+            totals["mrr_total_idr"] / count,
+            totals["mrr_total_usd"] / count,
+            totals["arr_total_idr"] / count,
+            totals["arr_total_usd"] / count,
+            unit_count,
+        )
+
+    async def get_average_mrr_arr_per_unit_current(self):
+        mrrs = await self.get_mrr_all_customers()
+        today = date.today()
+        monthly_totals = self._build_monthly_totals(mrrs)
+        prev_month = _add_months(date(today.year, today.month, 1), -1)
+
+        (
+            mrr_per_unit_idr,
+            mrr_per_unit_usd,
+            arr_per_unit_idr,
+            arr_per_unit_usd,
+            active_units,
+        ) = self._average_mrr_arr_per_unit(mrrs, monthly_totals, today.year, today.month)
+        prev_mrr_per_unit_idr, _, _, _, _ = self._average_mrr_arr_per_unit(
+            mrrs, monthly_totals, prev_month.year, prev_month.month
+        )
+
+        return {
+            "year": today.year,
+            "month": today.month,
+            "active_units": active_units,
+            "mrr_per_unit_idr": mrr_per_unit_idr,
+            "mrr_per_unit_usd": mrr_per_unit_usd,
+            "arr_per_unit_idr": arr_per_unit_idr,
+            "arr_per_unit_usd": arr_per_unit_usd,
+            "percentage_change": self._percentage_change(
+                mrr_per_unit_idr, prev_mrr_per_unit_idr
             ),
         }
 

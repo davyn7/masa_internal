@@ -112,7 +112,11 @@ async def get_average_mrr_arr_per_customer_current():
 
 @router.get("/average_mrr_arr_per_unit_current", tags=["Financial KPIs"])
 async def get_average_mrr_arr_per_unit_current():
-    pass
+    try:
+        manager = KpiManager()
+        return await manager.get_average_mrr_arr_per_unit_current()
+    except Exception as e:
+        raise e
 
 # Invoice Routers
 
