@@ -536,7 +536,23 @@ class KpiManager:
             return Decimal("0")
         return (usd_converted_idr / total_idr) * Decimal("100")
 
-    def _finalize_monthly_entry(self, month: date, totals: dict) -> dict:
+    def _percentage_change(self, current: Decimal, previous: Decimal) -> Decimal:
+        if previous == 0:
+            return Decimal("0")
+        return ((current - previous) / previous) * Decimal("100")
+
+    def _get_totals_for_calendar_month(self, monthly_totals: dict, year: int, month: int) -> dict:
+        for month_key, totals in monthly_totals.items():
+            entry_month = _to_date(month_key)
+            if entry_month and entry_month.year == year and entry_month.month == month:
+                return totals
+        return self._empty_monthly_totals()
+
+    def _finalize_monthly_entry(self, month: date, totals: dict, monthly_totals: dict) -> dict:
+        prev_month = _add_months(date(month.year, month.month, 1), -1)
+        prev_totals = self._get_totals_for_calendar_month(
+            monthly_totals, prev_month.year, prev_month.month
+        )
         return {
             "year": month.year,
             "month": month.month,
@@ -554,9 +570,12 @@ class KpiManager:
             "arr_usd_percentage": self._usd_percentage(
                 totals["arr_usd_converted_idr"], totals["arr_total_idr"]
             ),
+            "percentage_change": self._percentage_change(
+                totals["mrr_total_idr"], prev_totals["mrr_total_idr"]
+            ),
         }
 
-    def _aggregate_mrr_arr_monthly(self, mrrs: list, target_month: Optional[date] = None) -> list:
+    def _build_monthly_totals(self, mrrs: list, target_month: Optional[date] = None) -> dict:
         monthly_totals = {}
 
         for mrr in mrrs or []:
@@ -592,8 +611,12 @@ class KpiManager:
                 if currency == "USD":
                     totals["arr_usd_converted_idr"] += amount_idr * MONTHS_PER_YEAR
 
+        return monthly_totals
+
+    def _aggregate_mrr_arr_monthly(self, mrrs: list, target_month: Optional[date] = None) -> list:
+        monthly_totals = self._build_monthly_totals(mrrs, target_month)
         return [
-            self._finalize_monthly_entry(_to_date(month_key), totals)
+            self._finalize_monthly_entry(_to_date(month_key), totals, monthly_totals)
             for month_key, totals in sorted(monthly_totals.items())
         ]
 
@@ -604,10 +627,13 @@ class KpiManager:
     async def get_mrr_arr_current(self):
         mrrs = await self.get_mrr_all_customers()
         today = date.today()
-        results = self._aggregate_mrr_arr_monthly(mrrs, target_month=today)
-        if results:
-            return results[0]
-        return self._finalize_monthly_entry(today, self._empty_monthly_totals())
+        monthly_totals = self._build_monthly_totals(mrrs)
+        current_totals = self._get_totals_for_calendar_month(
+            monthly_totals, today.year, today.month
+        )
+        return self._finalize_monthly_entry(
+            date(today.year, today.month, 1), current_totals, monthly_totals
+        )
 
 
 class FXRateManager:

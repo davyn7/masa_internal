@@ -17,3 +17,5 @@ Potential Revenue
 Create `INACTIVE_CONTRACTS` table.
 
 Create `INACTIVE_DEVICES` table.
+
+Multiple concurrent contracts for the same customer?

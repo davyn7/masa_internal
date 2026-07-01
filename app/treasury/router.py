@@ -38,14 +38,6 @@ async def get_mrr_arr_current():
     except Exception as e:
         raise e
 
-@router.get("/mrr_arr_monthly_by_currency", tags=["Financial KPIs"])
-async def get_mrr_arr_monthly_by_currency():
-    pass
-
-@router.get("/mrr_arr_current_by_currency", tags=["Financial KPIs"])
-async def get_mrr_arr_current_by_currency():
-    pass
-
 @router.get("/mrr_by_customer", tags=["Financial KPIs"])
 async def get_mrr_by_customer(customer_id: int):
     try:
