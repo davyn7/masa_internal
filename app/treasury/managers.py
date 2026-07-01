@@ -12,6 +12,7 @@ import calendar
 import logging
 from datetime import date, timedelta
 from decimal import Decimal
+from typing import Optional
 from fastapi import HTTPException
 from app.customers.db import (
     get_customers_db,
@@ -555,7 +556,7 @@ class KpiManager:
             ),
         }
 
-    def _aggregate_mrr_arr_monthly(self, mrrs: list) -> list:
+    def _aggregate_mrr_arr_monthly(self, mrrs: list, target_month: Optional[date] = None) -> list:
         monthly_totals = {}
 
         for mrr in mrrs or []:
@@ -563,6 +564,10 @@ class KpiManager:
             for entry in mrr.get("monthly") or []:
                 month = _to_date(entry.get("month"))
                 if month is None:
+                    continue
+                if target_month is not None and (
+                    month.year != target_month.year or month.month != target_month.month
+                ):
                     continue
 
                 month_key = month.isoformat()
@@ -595,6 +600,14 @@ class KpiManager:
     async def get_mrr_arr_monthly(self):
         mrrs = await self.get_mrr_all_customers()
         return self._aggregate_mrr_arr_monthly(mrrs)
+
+    async def get_mrr_arr_current(self):
+        mrrs = await self.get_mrr_all_customers()
+        today = date.today()
+        results = self._aggregate_mrr_arr_monthly(mrrs, target_month=today)
+        if results:
+            return results[0]
+        return self._finalize_monthly_entry(today, self._empty_monthly_totals())
 
 
 class FXRateManager:

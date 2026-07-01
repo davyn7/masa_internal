@@ -32,7 +32,11 @@ async def get_mrr_arr_monthly():
 
 @router.get("/mrr_arr_current", tags=["Financial KPIs"])
 async def get_mrr_arr_current():
-    pass
+    try:
+        manager = KpiManager()
+        return await manager.get_mrr_arr_current()
+    except Exception as e:
+        raise e
 
 @router.get("/mrr_arr_monthly_by_currency", tags=["Financial KPIs"])
 async def get_mrr_arr_monthly_by_currency():
