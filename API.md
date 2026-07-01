@@ -695,6 +695,84 @@ curl http://localhost:8000/treasury/mrr_arr_current
 
 ---
 
+#### `GET /treasury/average_mrr_arr_per_customer_current`
+
+Average MRR and ARR per customer for the current calendar month. Totals include all USD and IDR amounts (with FX conversion), divided by the number of customers with an active contract in that month.
+
+**Response:** Single summary object.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `year` | `int` | Calendar year |
+| `month` | `int` | Calendar month (1–12) |
+| `active_customers` | `int` | Customers with an active contract in this month |
+| `mrr_per_customer_idr` | `decimal` | Total MRR in IDR ÷ `active_customers` |
+| `mrr_per_customer_usd` | `decimal` | Total MRR in USD ÷ `active_customers` |
+| `arr_per_customer_idr` | `decimal` | Total ARR in IDR ÷ `active_customers` |
+| `arr_per_customer_usd` | `decimal` | Total ARR in USD ÷ `active_customers` |
+| `percentage_change` | `decimal` | Change in average MRR per customer (IDR) vs. previous month (%) |
+
+**Example**
+
+```bash
+curl http://localhost:8000/treasury/average_mrr_arr_per_customer_current
+```
+
+```json
+{
+  "year": 2026,
+  "month": 7,
+  "active_customers": 2,
+  "mrr_per_customer_idr": "59625000",
+  "mrr_per_customer_usd": "3407.14",
+  "arr_per_customer_idr": "715500000",
+  "arr_per_customer_usd": "40885.71",
+  "percentage_change": "0"
+}
+```
+
+---
+
+#### `GET /treasury/average_mrr_arr_per_unit_current`
+
+Average MRR and ARR per unit for the current calendar month. Totals include all USD and IDR amounts (with FX conversion), divided by the total number of active units across all customers with active contracts.
+
+A **unit** is one vehicle counted in aggregates: `dt`, `exca`, `lv`, `manhauler`, `dozer`, `grader`, `fuel_truck`, or `water_truck`.
+
+**Response:** Single summary object.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `year` | `int` | Calendar year |
+| `month` | `int` | Calendar month (1–12) |
+| `active_units` | `int` | Total active units across all customers in this month |
+| `mrr_per_unit_idr` | `decimal` | Total MRR in IDR ÷ `active_units` |
+| `mrr_per_unit_usd` | `decimal` | Total MRR in USD ÷ `active_units` |
+| `arr_per_unit_idr` | `decimal` | Total ARR in IDR ÷ `active_units` |
+| `arr_per_unit_usd` | `decimal` | Total ARR in USD ÷ `active_units` |
+| `percentage_change` | `decimal` | Change in average MRR per unit (IDR) vs. previous month (%) |
+
+**Example**
+
+```bash
+curl http://localhost:8000/treasury/average_mrr_arr_per_unit_current
+```
+
+```json
+{
+  "year": 2026,
+  "month": 7,
+  "active_units": 225,
+  "mrr_per_unit_idr": "530000",
+  "mrr_per_unit_usd": "30.29",
+  "arr_per_unit_idr": "6360000",
+  "arr_per_unit_usd": "363.43",
+  "percentage_change": "0"
+}
+```
+
+---
+
 #### `GET /treasury/mrr_by_customer`
 
 MRR breakdown for a single customer.
