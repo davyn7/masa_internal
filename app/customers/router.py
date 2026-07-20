@@ -4,12 +4,14 @@ from fastapi import APIRouter
 from app.customers.managers import (
     CustomerManager,
     ContractManager,
-    AggregateManager
+    AggregateManager,
+    EquipmentManager
 )
 from app.customers.schemas import (
     CustomerBase,
     ContractBase,
-    AggregateBase
+    AggregateBase,
+    EquipmentBase
 )
 
 router = APIRouter(prefix="/customers")
@@ -161,5 +163,55 @@ async def delete_aggregates():
     try:
         manager = AggregateManager(None)
         return await manager.delete_aggregates()
+    except Exception as e:
+        raise e
+
+# Equipment Routers
+
+@router.get("/equipments", tags=["Basic Equipments"])
+async def get_equipments():
+    try:
+        manager = EquipmentManager(None)
+        return await manager.get_equipments()
+    except Exception as e:
+        raise e
+
+@router.get("/equipments/{equipment_id}", tags=["Basic Equipments"])
+async def get_equipment(equipment_id: int):
+    try:
+        manager = EquipmentManager(None)
+        return await manager.get_equipment(equipment_id)
+    except Exception as e:
+        raise e
+
+@router.post("/add_equipment", tags=["Basic Equipments"])
+async def add_equipment(equipment: EquipmentBase):
+    try:
+        manager = EquipmentManager(equipment)
+        return await manager.add_equipment()
+    except Exception as e:
+        raise e
+
+@router.patch("/update_equipment/{equipment_id}", tags=["Basic Equipments"])
+async def update_equipment(equipment_id: int, equipment: EquipmentBase):
+    try:
+        manager = EquipmentManager(equipment)
+        return await manager.update_equipment(equipment_id)
+    except Exception as e:
+        raise e
+
+@router.delete("/delete_equipment/{equipment_id}", tags=["Basic Equipments"])
+async def delete_equipment(equipment_id: int):
+    try:
+        manager = EquipmentManager(None)
+        return await manager.delete_equipment(equipment_id)
+    except Exception as e:
+        raise e
+
+@router.delete("/delete_equipments", tags=["Basic Equipments"])
+async def delete_equipments():
+    try:
+        manager = EquipmentManager(None)
+        return await manager.delete_equipments()
     except Exception as e:
         raise e

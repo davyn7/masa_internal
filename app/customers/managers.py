@@ -3,7 +3,8 @@
 from app.customers.schemas import (
     CustomerBase,
     ContractBase,
-    AggregateBase
+    AggregateBase,
+    EquipmentBase
 )
 from app.customers.db import (
     get_customers_db,
@@ -23,7 +24,13 @@ from app.customers.db import (
     add_aggregate_db,
     update_aggregate_db,
     delete_aggregate_db,
-    delete_aggregates_db
+    delete_aggregates_db,
+    get_equipments_db,
+    get_equipment_db,
+    add_equipment_db,
+    update_equipment_db,
+    delete_equipment_db,
+    delete_equipments_db
 )
 
 class CustomerManager:
@@ -91,3 +98,25 @@ class AggregateManager:
 
     async def delete_aggregates(self):
         return await delete_aggregates_db()
+
+class EquipmentManager:
+    def __init__(self, equipment: EquipmentBase):
+        self.equipment = equipment
+
+    async def get_equipments(self):
+        return await get_equipments_db()
+
+    async def get_equipment(self, equipment_id: int):
+        return await get_equipment_db(equipment_id)
+
+    async def add_equipment(self):
+        return await add_equipment_db(self.equipment)
+
+    async def update_equipment(self, equipment_id: int):
+        return await update_equipment_db(self.equipment, equipment_id)
+
+    async def delete_equipment(self, equipment_id: int):
+        return await delete_equipment_db(equipment_id)
+
+    async def delete_equipments(self):
+        return await delete_equipments_db()

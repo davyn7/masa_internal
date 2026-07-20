@@ -5,7 +5,8 @@ from app.connection import supabase
 from app.customers.schemas import (
     CustomerBase,
     ContractBase,
-    AggregateBase
+    AggregateBase,
+    EquipmentBase
 )
 
 async def get_customers_db():
@@ -110,4 +111,30 @@ async def delete_aggregate_db(aggregate_id: int):
 
 async def delete_aggregates_db():
     response = supabase.table("AGGREGATES").delete().neq("id", 0).execute()
+    return response.data
+
+async def get_equipments_db():
+    response = supabase.table("EQUIPMENTS").select("*").execute()
+    return response.data
+
+async def get_equipment_db(equipment_id: int):
+    response = supabase.table("EQUIPMENTS").select("*").eq("id", equipment_id).execute()
+    return response.data
+
+async def add_equipment_db(equipment: EquipmentBase):
+    equipment_data = equipment.model_dump(mode="json")
+    response = supabase.table("EQUIPMENTS").insert(equipment_data).execute()
+    return response.data
+
+async def update_equipment_db(equipment: EquipmentBase, equipment_id: int):
+    equipment_data = equipment.model_dump(exclude_unset=True, mode="json")
+    response = supabase.table("EQUIPMENTS").update(equipment_data).eq("id", equipment_id).execute()
+    return response.data
+
+async def delete_equipment_db(equipment_id: int):
+    response = supabase.table("EQUIPMENTS").delete().eq("id", equipment_id).execute()
+    return response.data
+
+async def delete_equipments_db():
+    response = supabase.table("EQUIPMENTS").delete().neq("id", 0).execute()
     return response.data

@@ -44,3 +44,15 @@ class AggregateBase(BaseModel):
     water_truck: Optional[int] = None
     fuel_truck: Optional[int] = None
     manhauler: Optional[int] = None
+
+class EquipmentBase(BaseModel):
+    customer_id: Optional[int] = None
+    updated_at: Optional[date] = None
+    dt: Optional[int] = None
+    exca: Optional[int] = None
+    lv: Optional[int] = None
+    dozer: Optional[int] = None
+    grader: Optional[int] = None
+    water_truck: Optional[int] = None
+    fuel_truck: Optional[int] = None
+    manhauler: Optional[int] = None
