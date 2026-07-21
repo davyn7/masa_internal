@@ -16,6 +16,7 @@ FastAPI application for customer, contract, aggregate, invoice, FX rate, and fin
   - [Customers](#customers-1)
   - [Contracts](#contracts)
   - [Aggregates](#aggregates)
+  - [Equipments](#equipments)
 - [Treasury](#treasury)
   - [Financial KPIs](#financial-kpis)
   - [Invoices](#invoices)
@@ -593,6 +594,162 @@ Delete all aggregates.
 
 ```bash
 curl -X DELETE http://localhost:8000/customers/delete_aggregates
+```
+
+---
+
+### Equipments
+
+Vehicle equipment counts per customer.
+
+#### `GET /customers/equipments`
+
+List all equipments.
+
+**Response:** Array of equipment objects.
+
+**Example**
+
+```bash
+curl http://localhost:8000/customers/equipments
+```
+
+```json
+[
+  {
+    "id": 1,
+    "customer_id": 1,
+    "updated_at": "2024-06-01",
+    "dt": 10,
+    "exca": 5,
+    "lv": 8,
+    "dozer": 3,
+    "grader": 2,
+    "water_truck": 4,
+    "fuel_truck": 3,
+    "manhauler": 6
+  }
+]
+```
+
+---
+
+#### `GET /customers/equipments/{equipment_id}`
+
+Get an equipment record by ID.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `equipment_id` | `int` | Equipment ID |
+
+**Response:** Array with zero or one equipment object.
+
+**Example**
+
+```bash
+curl http://localhost:8000/customers/equipments/1
+```
+
+---
+
+#### `POST /customers/add_equipment`
+
+Create an equipment record.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `customer_id` | `int` | No | Linked customer ID |
+| `updated_at` | `date` | No | Effective date of this fleet snapshot |
+| `dt` | `int` | No | Dump truck count |
+| `exca` | `int` | No | Excavator count |
+| `lv` | `int` | No | Light vehicle count |
+| `dozer` | `int` | No | Dozer count |
+| `grader` | `int` | No | Grader count |
+| `water_truck` | `int` | No | Water truck count |
+| `fuel_truck` | `int` | No | Fuel truck count |
+| `manhauler` | `int` | No | Manhauler count |
+
+**Response:** Array containing the created row(s).
+
+**Example**
+
+```bash
+curl -X POST http://localhost:8000/customers/add_equipment \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": 1,
+    "updated_at": "2024-06-01",
+    "dt": 10,
+    "exca": 5,
+    "lv": 8,
+    "dozer": 3,
+    "grader": 2,
+    "water_truck": 4,
+    "fuel_truck": 3,
+    "manhauler": 6
+  }'
+```
+
+---
+
+#### `PATCH /customers/update_equipment/{equipment_id}`
+
+Update an equipment record. Only fields present in the body are updated.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `equipment_id` | `int` | Equipment ID |
+
+**Request body:** Same fields as `POST /customers/add_equipment` (all optional).
+
+**Response:** Array containing the updated row(s).
+
+**Example**
+
+```bash
+curl -X PATCH http://localhost:8000/customers/update_equipment/1 \
+  -H "Content-Type: application/json" \
+  -d '{"dt": 12, "exca": 6}'
+```
+
+---
+
+#### `DELETE /customers/delete_equipment/{equipment_id}`
+
+Delete an equipment record by ID.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `equipment_id` | `int` | Equipment ID |
+
+**Response:** Array of deleted row(s).
+
+**Example**
+
+```bash
+curl -X DELETE http://localhost:8000/customers/delete_equipment/1
+```
+
+---
+
+#### `DELETE /customers/delete_equipments`
+
+Delete all equipments.
+
+**Response:** Array of deleted row(s).
+
+**Example**
+
+```bash
+curl -X DELETE http://localhost:8000/customers/delete_equipments
 ```
 
 ---
