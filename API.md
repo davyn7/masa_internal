@@ -1,6 +1,6 @@
 # Masa Internal API
 
-FastAPI application for customer, contract, aggregate, invoice, FX rate, and financial KPI management.
+FastAPI application for customer, contract, aggregate, equipment asset, invoice, FX rate, and financial KPI management.
 
 **Base URL:** `http://localhost:8000` (default when running `uvicorn main:app --reload`)
 
@@ -17,6 +17,10 @@ FastAPI application for customer, contract, aggregate, invoice, FX rate, and fin
   - [Contracts](#contracts)
   - [Aggregates](#aggregates)
   - [Equipments](#equipments)
+- [Assets](#assets)
+  - [Makes](#makes)
+  - [Models](#models)
+  - [Assets (units)](#assets-units)
 - [Treasury](#treasury)
   - [Financial KPIs](#financial-kpis)
   - [Invoices](#invoices)
@@ -750,6 +754,467 @@ Delete all equipments.
 
 ```bash
 curl -X DELETE http://localhost:8000/customers/delete_equipments
+```
+
+---
+
+## Assets
+
+**Prefix:** `/assets`
+
+Fleet catalog and unit-level asset tracking. **Makes** are manufacturers (e.g. Komatsu). **Models** are equipment models tied to a make and vehicle type. **Assets** are individual units assigned to a customer.
+
+Valid `vehicle_type` values: `dt`, `exca`, `lv`, `dozer`, `grader`, `water_truck`, `fuel_truck`, `manhauler`.
+
+---
+
+### Makes
+
+Equipment manufacturers.
+
+#### `GET /assets/makes`
+
+List all makes.
+
+**Response:** Array of make objects.
+
+**Example**
+
+```bash
+curl http://localhost:8000/assets/makes
+```
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Komatsu"
+  }
+]
+```
+
+---
+
+#### `GET /assets/makes/{make_id}`
+
+Get a make by ID.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `make_id` | `int` | Make ID |
+
+**Response:** Array with zero or one make object.
+
+**Example**
+
+```bash
+curl http://localhost:8000/assets/makes/1
+```
+
+---
+
+#### `POST /assets/add_make`
+
+Create a make.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | No | Manufacturer name |
+
+**Response:** Array containing the created row(s).
+
+**Errors:** `409` if a make with the same `name` already exists.
+
+**Example**
+
+```bash
+curl -X POST http://localhost:8000/assets/add_make \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Komatsu"}'
+```
+
+---
+
+#### `PATCH /assets/update_make/{make_id}`
+
+Update a make. Only fields present in the body are updated.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `make_id` | `int` | Make ID |
+
+**Request body:** Same fields as `POST /assets/add_make` (all optional).
+
+**Response:** Array containing the updated row(s).
+
+**Example**
+
+```bash
+curl -X PATCH http://localhost:8000/assets/update_make/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Komatsu Ltd."}'
+```
+
+---
+
+#### `DELETE /assets/delete_make/{make_id}`
+
+Delete a make by ID.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `make_id` | `int` | Make ID |
+
+**Response:** Array of deleted row(s).
+
+**Example**
+
+```bash
+curl -X DELETE http://localhost:8000/assets/delete_make/1
+```
+
+---
+
+#### `DELETE /assets/delete_makes`
+
+Delete all makes.
+
+**Response:** Array of deleted row(s).
+
+**Example**
+
+```bash
+curl -X DELETE http://localhost:8000/assets/delete_makes
+```
+
+---
+
+### Models
+
+Equipment models linked to a make and vehicle type.
+
+#### `GET /assets/all_models`
+
+List all models across all makes, including the make name.
+
+**Response:** Array of model objects with a flat `make_name` field.
+
+**Example**
+
+```bash
+curl http://localhost:8000/assets/all_models
+```
+
+```json
+[
+  {
+    "id": 1,
+    "make_id": 1,
+    "name": "PC200",
+    "vehicle_type": "exca",
+    "make_name": "Komatsu"
+  }
+]
+```
+
+---
+
+#### `GET /assets/models`
+
+List models, optionally filtered by make.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `make_id` | `int` | No | Filter to models for this make |
+
+**Response:** Array of model objects. When `make_id` is omitted, returns all models with `make_name` (same as `GET /assets/all_models`). When `make_id` is provided, returns models for that make only (no `make_name` field).
+
+**Example**
+
+```bash
+curl http://localhost:8000/assets/models
+curl "http://localhost:8000/assets/models?make_id=1"
+```
+
+---
+
+#### `GET /assets/models/{model_id}`
+
+Get a model by ID.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `model_id` | `int` | Model ID |
+
+**Response:** Array with zero or one model object.
+
+**Example**
+
+```bash
+curl http://localhost:8000/assets/models/1
+```
+
+---
+
+#### `POST /assets/add_model`
+
+Create a model.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `make_id` | `int` | No | Linked make ID |
+| `name` | `string` | No | Model name (e.g. `PC200`) |
+| `vehicle_type` | `string` | No | One of the valid vehicle types listed above |
+
+**Response:** Array containing the created row(s).
+
+**Errors:** `409` if a model with the same `name` already exists for the given `make_id`.
+
+**Example**
+
+```bash
+curl -X POST http://localhost:8000/assets/add_model \
+  -H "Content-Type: application/json" \
+  -d '{
+    "make_id": 1,
+    "name": "PC200",
+    "vehicle_type": "exca"
+  }'
+```
+
+---
+
+#### `PATCH /assets/update_model/{model_id}`
+
+Update a model. Only fields present in the body are updated.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `model_id` | `int` | Model ID |
+
+**Request body:** Same fields as `POST /assets/add_model` (all optional).
+
+**Response:** Array containing the updated row(s).
+
+**Example**
+
+```bash
+curl -X PATCH http://localhost:8000/assets/update_model/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name": "PC200-8"}'
+```
+
+---
+
+#### `DELETE /assets/delete_model/{model_id}`
+
+Delete a model by ID.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `model_id` | `int` | Model ID |
+
+**Response:** Array of deleted row(s).
+
+**Example**
+
+```bash
+curl -X DELETE http://localhost:8000/assets/delete_model/1
+```
+
+---
+
+#### `DELETE /assets/delete_models`
+
+Delete all models.
+
+**Response:** Array of deleted row(s).
+
+**Example**
+
+```bash
+curl -X DELETE http://localhost:8000/assets/delete_models
+```
+
+---
+
+### Assets (units)
+
+Individual heavy equipment units assigned to a customer.
+
+#### `GET /assets/assets`
+
+List all assets, optionally filtered by customer.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `customer_id` | `int` | No | Filter to assets for this customer |
+
+**Response:** Array of asset objects with nested model details.
+
+**Example**
+
+```bash
+curl http://localhost:8000/assets/assets
+curl "http://localhost:8000/assets/assets?customer_id=1"
+```
+
+```json
+[
+  {
+    "id": 1,
+    "customer_id": 1,
+    "model_id": 1,
+    "unit_identifier": "EX-101",
+    "is_on_site": true,
+    "device_installed": true,
+    "installed_at": "2024-06-01",
+    "removed_at": null,
+    "notes": null,
+    "MODELS": {
+      "name": "PC200",
+      "vehicle_type": "exca",
+      "make_id": 1
+    }
+  }
+]
+```
+
+---
+
+#### `GET /assets/assets/{asset_id}`
+
+Get an asset by ID.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `asset_id` | `int` | Asset ID |
+
+**Response:** Array with zero or one asset object (includes nested `MODELS`).
+
+**Example**
+
+```bash
+curl http://localhost:8000/assets/assets/1
+```
+
+---
+
+#### `POST /assets/add_asset`
+
+Create an asset.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `customer_id` | `int` | No | Linked customer ID |
+| `model_id` | `int` | No | Linked model ID |
+| `unit_identifier` | `string` | No | Fleet number, plate, or internal label |
+| `is_on_site` | `bool` | No | Whether the unit is on site (default `true`) |
+| `device_installed` | `bool` | No | Whether a device is installed (default `false`) |
+| `installed_at` | `date` | No | Date the device was installed |
+| `removed_at` | `date` | No | Date the unit left site or device was removed |
+| `notes` | `string` | No | Free-text notes |
+
+**Response:** Array containing the created row(s).
+
+**Errors:** `400` if `device_installed` is `true` while `is_on_site` is `false`.
+
+**Example**
+
+```bash
+curl -X POST http://localhost:8000/assets/add_asset \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": 1,
+    "model_id": 1,
+    "unit_identifier": "EX-101",
+    "device_installed": true,
+    "installed_at": "2024-06-01"
+  }'
+```
+
+---
+
+#### `PATCH /assets/update_asset/{asset_id}`
+
+Update an asset. Only fields present in the body are updated.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `asset_id` | `int` | Asset ID |
+
+**Request body:** Same fields as `POST /assets/add_asset` (all optional).
+
+**Response:** Array containing the updated row(s).
+
+**Errors:** `400` if the resulting state has `device_installed` true while `is_on_site` is false.
+
+**Example**
+
+```bash
+curl -X PATCH http://localhost:8000/assets/update_asset/1 \
+  -H "Content-Type: application/json" \
+  -d '{"device_installed": false, "removed_at": "2024-12-01"}'
+```
+
+---
+
+#### `DELETE /assets/delete_asset/{asset_id}`
+
+Delete an asset by ID.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `asset_id` | `int` | Asset ID |
+
+**Response:** Array of deleted row(s).
+
+**Example**
+
+```bash
+curl -X DELETE http://localhost:8000/assets/delete_asset/1
+```
+
+---
+
+#### `DELETE /assets/delete_assets`
+
+Delete all assets.
+
+**Response:** Array of deleted row(s).
+
+**Example**
+
+```bash
+curl -X DELETE http://localhost:8000/assets/delete_assets
 ```
 
 ---

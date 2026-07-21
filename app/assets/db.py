@@ -5,6 +5,16 @@ from app.connection import supabase
 from app.assets.schemas import MakeBase, ModelBase, AssetBase
 
 ASSET_SELECT = "*, MODELS(name, vehicle_type, make_id)"
+MODEL_SELECT = "*, MAKES(name)"
+
+def _flatten_model_make_name(models):
+    result = []
+    for model in models or []:
+        row = {k: v for k, v in model.items() if k != "MAKES"}
+        makes = model.get("MAKES") or {}
+        row["make_name"] = makes.get("name")
+        result.append(row)
+    return result
 
 async def get_makes_db():
     response = supabase.table("MAKES").select("*").execute()
@@ -37,8 +47,8 @@ async def delete_makes_db():
     return response.data
 
 async def get_all_models_db():
-    response = supabase.table("MODELS").select("*").execute()
-    return response.data
+    response = supabase.table("MODELS").select(MODEL_SELECT).execute()
+    return _flatten_model_make_name(response.data)
 
 async def get_models_db(make_id: Optional[int] = None):
     if make_id is None:
