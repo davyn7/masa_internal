@@ -2,7 +2,9 @@
 
 from typing import Optional
 from app.connection import supabase
-from app.assets.schemas import MakeBase, ModelBase
+from app.assets.schemas import MakeBase, ModelBase, AssetBase
+
+ASSET_SELECT = "*, MODELS(name, vehicle_type, make_id)"
 
 async def get_makes_db():
     response = supabase.table("MAKES").select("*").execute()
@@ -34,11 +36,14 @@ async def delete_makes_db():
     response = supabase.table("MAKES").delete().neq("id", 0).execute()
     return response.data
 
+async def get_all_models_db():
+    response = supabase.table("MODELS").select("*").execute()
+    return response.data
+
 async def get_models_db(make_id: Optional[int] = None):
-    query = supabase.table("MODELS").select("*")
-    if make_id is not None:
-        query = query.eq("make_id", make_id)
-    response = query.execute()
+    if make_id is None:
+        return await get_all_models_db()
+    response = supabase.table("MODELS").select("*").eq("make_id", make_id).execute()
     return response.data
 
 async def get_model_db(model_id: int):
@@ -71,4 +76,38 @@ async def delete_model_db(model_id: int):
 
 async def delete_models_db():
     response = supabase.table("MODELS").delete().neq("id", 0).execute()
+    return response.data
+
+async def get_assets_db(customer_id: Optional[int] = None):
+    query = supabase.table("ASSETS").select(ASSET_SELECT)
+    if customer_id is not None:
+        query = query.eq("customer_id", customer_id)
+    response = query.execute()
+    return response.data
+
+async def get_asset_db(asset_id: int):
+    response = (
+        supabase.table("ASSETS")
+        .select(ASSET_SELECT)
+        .eq("id", asset_id)
+        .execute()
+    )
+    return response.data
+
+async def add_asset_db(asset: AssetBase):
+    asset_data = asset.model_dump(mode="json")
+    response = supabase.table("ASSETS").insert(asset_data).execute()
+    return response.data
+
+async def update_asset_db(asset: AssetBase, asset_id: int):
+    asset_data = asset.model_dump(exclude_unset=True, mode="json")
+    response = supabase.table("ASSETS").update(asset_data).eq("id", asset_id).execute()
+    return response.data
+
+async def delete_asset_db(asset_id: int):
+    response = supabase.table("ASSETS").delete().eq("id", asset_id).execute()
+    return response.data
+
+async def delete_assets_db():
+    response = supabase.table("ASSETS").delete().neq("id", 0).execute()
     return response.data

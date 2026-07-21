@@ -2,8 +2,8 @@
 
 from typing import Optional
 from fastapi import APIRouter, Query
-from app.assets.managers import MakeManager, ModelManager
-from app.assets.schemas import MakeBase, ModelBase
+from app.assets.managers import MakeManager, ModelManager, AssetManager
+from app.assets.schemas import MakeBase, ModelBase, AssetBase
 
 router = APIRouter(prefix="/assets")
 
@@ -59,6 +59,14 @@ async def delete_makes():
 
 # Model Routers
 
+@router.get("/all_models", tags=["Basic Models"])
+async def get_all_models():
+    try:
+        manager = ModelManager(None)
+        return await manager.get_all_models()
+    except Exception as e:
+        raise e
+
 @router.get("/models", tags=["Basic Models"])
 async def get_models(make_id: Optional[int] = Query(None)):
     try:
@@ -104,5 +112,55 @@ async def delete_models():
     try:
         manager = ModelManager(None)
         return await manager.delete_models()
+    except Exception as e:
+        raise e
+
+# Asset Routers
+
+@router.get("/assets", tags=["Basic Assets"])
+async def get_assets(customer_id: Optional[int] = Query(None)):
+    try:
+        manager = AssetManager(None)
+        return await manager.get_assets(customer_id)
+    except Exception as e:
+        raise e
+
+@router.get("/assets/{asset_id}", tags=["Basic Assets"])
+async def get_asset(asset_id: int):
+    try:
+        manager = AssetManager(None)
+        return await manager.get_asset(asset_id)
+    except Exception as e:
+        raise e
+
+@router.post("/add_asset", tags=["Basic Assets"])
+async def add_asset(asset: AssetBase):
+    try:
+        manager = AssetManager(asset)
+        return await manager.add_asset()
+    except Exception as e:
+        raise e
+
+@router.patch("/update_asset/{asset_id}", tags=["Basic Assets"])
+async def update_asset(asset_id: int, asset: AssetBase):
+    try:
+        manager = AssetManager(asset)
+        return await manager.update_asset(asset_id)
+    except Exception as e:
+        raise e
+
+@router.delete("/delete_asset/{asset_id}", tags=["Basic Assets"])
+async def delete_asset(asset_id: int):
+    try:
+        manager = AssetManager(None)
+        return await manager.delete_asset(asset_id)
+    except Exception as e:
+        raise e
+
+@router.delete("/delete_assets", tags=["Basic Assets"])
+async def delete_assets():
+    try:
+        manager = AssetManager(None)
+        return await manager.delete_assets()
     except Exception as e:
         raise e
