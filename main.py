@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from app.customers.router import router as customers_router
+from app.assets.router import router as assets_router
 from app.treasury.router import router as treasury_router
 
 load_dotenv()
@@ -13,6 +14,7 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 
 app.include_router(customers_router)
+app.include_router(assets_router)
 app.include_router(treasury_router)
 
 @app.get("/")
